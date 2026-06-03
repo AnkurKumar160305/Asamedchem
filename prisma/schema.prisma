@@ -8,13 +8,20 @@ datasource db {
 }
 
 model User {
-  id        String     @id @default(cuid())
-  email     String     @unique
+  id        String   @id @default(cuid())
+  name      String   @default("")
+  email     String   @unique
   password  String
-  role      Role       @default(SELLER)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  AuditLog  AuditLog[]
+  role      Role     @default(SELLER)
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs             AuditLog[]
+  quotations            Quotation[]
+  orders                Order[]
+  notifications         Notification[]
+  inventoryTransactions InventoryTransaction[]
 }
 
 enum Role {
@@ -24,16 +31,24 @@ enum Role {
 }
 
 model Product {
-  id            String           @id @default(cuid())
-  name          String
-  category      String
-  baseUnit      String
-  stockQuantity Decimal          @default(0)
-  unitPrice     Decimal          @default(0)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  conversions   UnitConversion[]
-  quoteItems    QuotationItem[]
+  id               String   @id @default(cuid())
+  sku              String   @unique @default(cuid())
+  name             String
+  category         String
+  description      String   @default("")
+  imageUrl         String   @default("")
+  baseUnit         String
+  stockQuantity    Decimal  @default(0) @db.Decimal(20, 6)
+  pricePerBaseUnit Decimal  @default(0) @db.Decimal(20, 6)
+  reorderLevel     Decimal  @default(10) @db.Decimal(20, 6)
+  status           String   @default("ACTIVE")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  conversions           UnitConversion[]
+  quotationItems        QuotationItem[]
+  orderItems            OrderItem[]
+  inventoryTransactions InventoryTransaction[]
 }
 
 model UnitConversion {
@@ -42,62 +57,114 @@ model UnitConversion {
   product          Product @relation(fields: [productId], references: [id])
   fromUnit         String
   toUnit           String
-  conversionFactor Decimal
+  conversionFactor Decimal @db.Decimal(20, 6)
+}
+
+model InventoryTransaction {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  type          String
+  quantity      Decimal  @db.Decimal(20, 6)
+  previousStock Decimal  @db.Decimal(20, 6)
+  newStock      Decimal  @db.Decimal(20, 6)
+  notes         String   @default("")
+  createdById   String
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
 }
 
 model Quotation {
-  id           String          @id @default(cuid())
-  customerName String
-  date         DateTime        @default(now())
-  status       QuoteStatus     @default(DRAFT)
-  totalAmount  Decimal         @default(0)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  items        QuotationItem[]
-  Order        Order?
+  id              String          @id @default(cuid())
+  quotationNumber String          @unique @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id])
+  customerName    String
+  status          QuoteStatus     @default(DRAFT)
+  subtotal        Decimal         @default(0) @db.Decimal(20, 6)
+  tax             Decimal         @default(0) @db.Decimal(20, 6)
+  total           Decimal         @default(0) @db.Decimal(20, 6)
+  notes           String          @default("")
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  items           QuotationItem[]
+  order           Order?
 }
 
 enum QuoteStatus {
   DRAFT
-  SENT
-  ACCEPTED
+  SUBMITTED
+  APPROVED
   REJECTED
 }
 
 model QuotationItem {
-  id         String    @id @default(cuid())
-  quoteId    String
-  quote      Quotation @relation(fields: [quoteId], references: [id])
-  productId  String
-  product    Product   @relation(fields: [productId], references: [id])
-  quantity   Decimal
-  unit       String
-  unitPrice  Decimal
-  totalPrice Decimal
+  id                String    @id @default(cuid())
+  quotationId       String
+  quotation         Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product   @relation(fields: [productId], references: [id])
+  orderedQuantity   Decimal   @db.Decimal(20, 6)
+  orderedUnit       String
+  convertedQuantity Decimal   @db.Decimal(20, 6)
+  unitPrice         Decimal   @db.Decimal(20, 6)
+  totalPrice        Decimal   @db.Decimal(20, 6)
 }
 
 model Order {
-  id        String      @id @default(cuid())
-  quoteId   String      @unique
-  quote     Quotation   @relation(fields: [quoteId], references: [id])
-  status    OrderStatus @default(PENDING)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id          String      @id @default(cuid())
+  orderNumber String      @unique @default(cuid())
+  quotationId String      @unique
+  quotation   Quotation   @relation(fields: [quotationId], references: [id])
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  status      OrderStatus @default(PENDING)
+  totalAmount Decimal     @default(0) @db.Decimal(20, 6)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  items       OrderItem[]
 }
 
 enum OrderStatus {
   PENDING
+  APPROVED
   PROCESSING
   SHIPPED
   DELIVERED
   CANCELLED
 }
 
-model AuditLog {
+model OrderItem {
+  id                String  @id @default(cuid())
+  orderId           String
+  order             Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product @relation(fields: [productId], references: [id])
+  quantity          Decimal @db.Decimal(20, 6)
+  unit              String
+  convertedQuantity Decimal @db.Decimal(20, 6)
+  price             Decimal @db.Decimal(20, 6)
+}
+
+model Notification {
   id        String   @id @default(cuid())
-  action    String
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  details   String
-  timestamp DateTime @default(now())
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  entity    String   @default("")
+  entityId  String   @default("")
+  oldData   String   @default("")
+  newData   String   @default("")
+  details   String   @default("")
+  createdAt DateTime @default(now())
 }
