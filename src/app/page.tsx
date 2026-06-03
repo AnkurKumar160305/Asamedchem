@@ -1,66 +1,118 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
 
-export default function Home() {
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+export default function AuthPage() {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("SELLER");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
+
+    try {
+      const payload = isLogin ? { email, password } : { email, password, role };
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to ${isLogin ? "login" : "register"}`);
+      }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "2rem" }}>
+      <div className="glass-card" style={{ maxWidth: "400px", width: "100%", textAlign: "center" }}>
+        <h1 className="heading-primary" style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>AasaMedChem</h1>
+        <p style={{ color: "var(--text-secondary)", marginBottom: "2rem" }}>
+          {isLogin ? "Sign in to your account" : "Create a new account"}
+        </p>
+        
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div>
+            <input 
+              type="email" 
+              className="input-premium" 
+              placeholder="Email Address" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
             />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+          <div>
+            <input 
+              type="password" 
+              className="input-premium" 
+              placeholder="Password" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          
+          {!isLogin && (
+            <div>
+              <select 
+                className="input-premium" 
+                value={role} 
+                onChange={(e) => setRole(e.target.value)}
+                style={{ appearance: "none", cursor: "pointer" }}
+              >
+                <option value="BUYER">Buyer</option>
+                <option value="SELLER">Seller</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </div>
+          )}
+          
+          {error && <div style={{ color: "var(--danger)", fontSize: "0.875rem", textAlign: "left" }}>{error}</div>}
+          
+          <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: "1rem" }}>
+            {loading ? "Processing..." : (isLogin ? "Sign In" : "Register")}
+          </button>
+        </form>
+
+        <div style={{ marginTop: "1.5rem", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+          {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
+          <button 
+            onClick={() => { setIsLogin(!isLogin); setError(""); }}
+            style={{ 
+              background: "none", 
+              border: "none", 
+              color: "var(--accent-primary)", 
+              cursor: "pointer", 
+              fontWeight: 600,
+              textDecoration: "underline"
+            }}
           >
-            Documentation
-          </a>
+            {isLogin ? "Register here" : "Sign in here"}
+          </button>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

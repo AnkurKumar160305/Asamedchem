@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AasaMedChem Management Platform
 
-## Getting Started
+Enterprise Inventory, Quotation, and Order Management Platform designed with Next.js, Prisma, and Neon PostgreSQL.
 
-First, run the development server:
+## Features
+- **Role-Based Access Control**: Admins, Sellers, and Buyers.
+- **Dynamic Unit Conversions**: Seamlessly convert `g`, `kg`, `mL`, `L`, and `count` on the fly.
+- **High Precision Financials**: Internal `DECIMAL` types ensure prices (in INR ₹) are perfectly precise regardless of unit scale.
+- **Premium UI**: Glassmorphism aesthetic, Next.js App Router.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Tech Stack
+- **Frontend/Backend**: Next.js 15 (App Router)
+- **Database**: Neon PostgreSQL
+- **ORM**: Prisma (using v5 to ensure legacy Prisma schema url compatibility)
+- **Styling**: Standard CSS (Design Tokens in `globals.css`)
+- **Authentication**: Custom JWT with `bcryptjs`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Data Storage Strategy
+### Base Unit Pattern
+To prevent floating-point and conversion drift errors, **all items are stored based on their smallest atomic unit** (`g`, `mL`, or `count`). 
+- `stockQuantity`: The amount of inventory available in the base unit.
+- `unitPrice`: The price in INR (₹) per *single* base unit.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Conversions
+Conversions happen at runtime in the UI (`Quotation Builder`). When a seller selects a product (e.g. Chemical X, stored in `g`), they can choose an output unit of `kg` with quantity `2`. The UI calculates the required base units (`2 * 1000 = 2000g`) and multiplies by the base `unitPrice` to present the final cost. No data is lost, and the database only stores absolute metrics.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### High Precision
+Both `stockQuantity` and `unitPrice` use Prisma's `Decimal` type which generates PostgreSQL `DECIMAL(65,30)` columns.
 
-## Learn More
+## Local Setup
+1. `npm install`
+2. Populate `.env` with `DATABASE_URL` (Neon Connection String) and `JWT_SECRET`.
+3. `npx prisma db push` or `npx prisma migrate dev`
+4. `npm run dev`
 
-To learn more about Next.js, take a look at the following resources:
+## Deployment to Vercel
+1. Ensure your code is pushed to a GitHub repository.
+2. Log into [Vercel](https://vercel.com/) and click "Add New Project".
+3. Import your GitHub repository.
+4. **Environment Variables**: Add your `DATABASE_URL` and `JWT_SECRET` in the Vercel dashboard.
+5. Deploy. Vercel automatically detects Next.js. 
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+*(Alternatively, run `npx vercel --prod` directly from your CLI if you have the Vercel CLI installed and authenticated).*

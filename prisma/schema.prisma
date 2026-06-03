@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String
+  role      Role       @default(SELLER)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  AuditLog  AuditLog[]
+}
+
+enum Role {
+  ADMIN
+  SELLER
+  BUYER
+}
+
+model Product {
+  id            String           @id @default(cuid())
+  name          String
+  category      String
+  baseUnit      String
+  stockQuantity Decimal          @default(0)
+  unitPrice     Decimal          @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  conversions   UnitConversion[]
+  quoteItems    QuotationItem[]
+}
+
+model UnitConversion {
+  id               String  @id @default(cuid())
+  productId        String
+  product          Product @relation(fields: [productId], references: [id])
+  fromUnit         String
+  toUnit           String
+  conversionFactor Decimal
+}
+
+model Quotation {
+  id           String          @id @default(cuid())
+  customerName String
+  date         DateTime        @default(now())
+  status       QuoteStatus     @default(DRAFT)
+  totalAmount  Decimal         @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  items        QuotationItem[]
+  Order        Order?
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+}
+
+model QuotationItem {
+  id         String    @id @default(cuid())
+  quoteId    String
+  quote      Quotation @relation(fields: [quoteId], references: [id])
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id])
+  quantity   Decimal
+  unit       String
+  unitPrice  Decimal
+  totalPrice Decimal
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  quoteId   String      @unique
+  quote     Quotation   @relation(fields: [quoteId], references: [id])
+  status    OrderStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  details   String
+  timestamp DateTime @default(now())
+}
