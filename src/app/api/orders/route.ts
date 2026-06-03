@@ -27,7 +27,116 @@ export async function POST(req: Request) {
     const user = getUserFromRequest(req);
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { quotationId } = await req.json();
+    const body = await req.json();
+
+    if (body.directOrder) {
+      const { customerName, notes, items } = body;
+      if (!customerName || !items?.length) {
+        return NextResponse.json({ error: 'Customer name and order items are required' }, { status: 400 });
+      }
+
+      const subtotal = items.reduce((sum: number, item: any) => sum + Number(item.totalPrice), 0);
+      const tax = subtotal * 0.18;
+      const total = subtotal + tax;
+
+      const quotation = await prisma.quotation.create({
+        data: {
+          userId: user.userId,
+          customerName,
+          status: 'APPROVED',
+          subtotal,
+          tax,
+          total,
+          notes: notes || '',
+          items: {
+            create: items.map((item: any) => ({
+              productId: item.productId,
+              orderedQuantity: Number(item.quantity),
+              orderedUnit: item.unit,
+              convertedQuantity: Number(item.convertedQuantity),
+              unitPrice: Number(item.pricePerBaseUnit),
+              totalPrice: Number(item.totalPrice),
+            })),
+          },
+        },
+        include: { items: true },
+      });
+
+      const order = await prisma.order.create({
+        data: {
+          quotationId: quotation.id,
+          userId: user.userId,
+          status: 'PENDING',
+          totalAmount: Number(quotation.total),
+          items: {
+            create: quotation.items.map((item) => ({
+              productId: item.productId,
+              quantity: Number(item.orderedQuantity),
+              unit: item.orderedUnit,
+              convertedQuantity: Number(item.convertedQuantity),
+              price: Number(item.totalPrice),
+            })),
+          },
+        },
+        include: { items: true, quotation: true },
+      });
+
+      for (const item of quotation.items) {
+        const product = await prisma.product.findUnique({ where: { id: item.productId } });
+        if (!product) continue;
+        const previousStock = Number(product.stockQuantity);
+        const deduction = Number(item.convertedQuantity);
+        const newStock = previousStock - deduction;
+
+        await prisma.product.update({ where: { id: item.productId }, data: { stockQuantity: Math.max(0, newStock) } });
+        await prisma.inventoryTransaction.create({
+          data: {
+            productId: item.productId,
+            type: 'STOCK_OUT',
+            quantity: deduction,
+            previousStock,
+            newStock: Math.max(0, newStock),
+            notes: `Direct order ${order.id} - ${item.orderedQuantity} ${item.orderedUnit}`,
+            createdById: user.userId,
+          },
+        });
+
+        if (newStock <= Number(product.reorderLevel)) {
+          const admins = await prisma.user.findMany({ where: { role: 'ADMIN' } });
+          for (const admin of admins) {
+            await prisma.notification.create({
+              data: {
+                userId: admin.id,
+                title: 'Low Stock Alert',
+                message: `Product "${product.name}" stock (${Math.max(0, newStock).toFixed(2)} ${product.baseUnit}) has fallen below reorder level (${product.reorderLevel} ${product.baseUnit}).`,
+              },
+            });
+          }
+        }
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          action: 'ORDER_CREATED',
+          userId: user.userId,
+          entity: 'Order',
+          entityId: order.id,
+          newData: JSON.stringify({ directOrder: true, quotationId: quotation.id, totalAmount: order.totalAmount }),
+        },
+      });
+
+      await prisma.notification.create({
+        data: {
+          userId: user.userId,
+          title: 'Order Confirmed',
+          message: `Your direct order #${order.id.slice(-8)} has been created successfully.`,
+        },
+      });
+
+      return NextResponse.json(order, { status: 201 });
+    }
+
+    const { quotationId } = body;
     if (!quotationId) {
       return NextResponse.json({ error: 'quotationId is required' }, { status: 400 });
     }
@@ -43,13 +152,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Only APPROVED quotations can become orders' }, { status: 400 });
     }
 
-    // Check if order already exists for this quotation
     const existingOrder = await prisma.order.findUnique({ where: { quotationId } });
     if (existingOrder) {
       return NextResponse.json({ error: 'Order already exists for this quotation' }, { status: 409 });
     }
 
-    // Create order with items copied from quotation
     const order = await prisma.order.create({
       data: {
         quotationId,
@@ -94,7 +201,6 @@ export async function POST(req: Request) {
           },
         });
 
-        // Trigger low stock notification for Admins
         if (newStock <= Number(product.reorderLevel)) {
           const admins = await prisma.user.findMany({ where: { role: 'ADMIN' } });
           for (const admin of admins) {

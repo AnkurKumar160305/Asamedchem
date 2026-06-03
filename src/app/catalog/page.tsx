@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { convertFromBaseUnit, getCompatibleUnits } from "@/lib/units";
+import { motion } from "framer-motion";
+import { getCompatibleUnits } from "@/lib/units";
 
 export default function CatalogPage() {
   const [products, setProducts] = useState<any[]>([]);

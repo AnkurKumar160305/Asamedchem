@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { convertToBaseUnit, calculatePrice, getCompatibleUnits } from "@/lib/units";
 
 export default function QuotationsPage() {
@@ -90,12 +91,37 @@ export default function QuotationsPage() {
     }
   };
 
+  const handlePlaceOrderNow = async () => {
+    if (!customerName.trim()) return alert("Please enter a Customer Name!");
+    if (items.length === 0) return alert("Please add at least one product!");
+
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ directOrder: true, customerName, notes, items }),
+      });
+      if (res.ok) {
+        alert("Order placed successfully! Stock has been reserved and you can track it in Order Management.");
+        setItems([]);
+        setCustomerName("");
+        setNotes("");
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to place order.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
-    <div className="page-container">
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+    <motion.div className="page-container" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+      <motion.header initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
         <h1 className="heading-primary" style={{ marginBottom: 0, fontSize: "2rem" }}>Quotation Builder</h1>
         <button className="btn-secondary" onClick={() => router.push("/dashboard")}>Back to Dashboard</button>
-      </header>
+      </motion.header>
 
       {/* Step 1: Customer */}
       <div className="glass-card" style={{ marginBottom: "2rem" }}>
@@ -196,12 +222,20 @@ export default function QuotationsPage() {
               <span>Total</span>
               <span style={{ color: "var(--accent-primary)" }}>₹{total.toFixed(2)}</span>
             </div>
-            <button className="btn-primary" style={{ width: "100%" }} onClick={handleCreateQuotation}>
-              Submit Quotation
-            </button>
+            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+              <button className="btn-primary" style={{ flex: 1, minWidth: "160px" }} onClick={handleCreateQuotation}>
+                Submit Quotation
+              </button>
+              <button className="btn-secondary" style={{ flex: 1, minWidth: "160px" }} onClick={handlePlaceOrderNow}>
+                Place Order Now
+              </button>
+            </div>
+            <p style={{ marginTop: "0.75rem", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+              Direct order placement creates an approved quotation and reserves stock immediately.
+            </p>
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

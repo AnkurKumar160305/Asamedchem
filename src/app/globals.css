@@ -25,6 +25,7 @@
   --font-main: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -126,4 +127,65 @@ button, input, select, textarea {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-bottom: 1.5rem;
+}
+
+/* Header and Footer */
+.site-header {
+  width: 100%;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand .logo {
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  padding: 0.25rem 0.5rem;
+}
+.nav {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+  color: var(--text-secondary);
+}
+.nav a:hover { color: var(--accent-primary); }
+.actions { display: flex; gap: 0.5rem; }
+
+.site-footer {
+  margin-top: auto;
+  padding: 1.25rem 0;
+  border-top: 1px solid rgba(255,255,255,0.03);
+}
+.footer-inner { display:flex; justify-content:space-between; align-items:center; gap:1rem; }
+.footer-links { display:flex; gap:1rem; color:var(--text-secondary); }
+.footer-links a:hover { color:var(--text-primary); }
+
+/* App shell */
+.app-shell {
+  display:flex;
+  min-height:100vh;
+  flex-direction:column;
+}
+
+/* Compact Header */
+.site-header.compact { background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent); border-bottom: 1px solid rgba(255,255,255,0.03); }
+.site-header.compact .header-inner { padding: 0.5rem 0; }
+.logo { display:flex; align-items:center; gap:0.5rem; }
+.logo-mark { background: var(--accent-primary); color: white; padding: 0.2rem 0.45rem; border-radius: 0.35rem; font-weight:700; }
+.logo-text { font-weight:700; color:var(--text-primary); }
+.nav.is-desktop { display:flex; gap:1rem; }
+.nav-mobile { display:flex; flex-direction:column; gap:0.75rem; padding:1rem 0; }
+.mobile-menu { background: linear-gradient(180deg, rgba(15,23,42,0.95), rgba(15,23,42,0.98)); border-bottom: 1px solid rgba(255,255,255,0.03); }
+.btn-secondary { padding: 0.45rem 0.6rem; font-weight:600; border-radius:0.5rem; }
+
+
+/* Small responsive tweaks */
+@media (max-width: 760px) {
+  .nav.is-desktop { display: none; }
+  .page-container { padding: 1rem; }
+  .heading-primary { font-size: 1.75rem; }
 }
