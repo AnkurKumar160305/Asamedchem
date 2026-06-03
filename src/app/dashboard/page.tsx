@@ -40,7 +40,7 @@ export default function Dashboard() {
       {/* Header */}
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
         <div>
-          <h1 className="heading-primary" style={{ marginBottom: "0.25rem", fontSize: "2rem" }}>AasaMedChem Dashboard</h1>
+          <h1 className="heading-primary" style={{ marginBottom: "0.25rem", fontSize: "2rem" }}>AlcheFlow Nexus Dashboard</h1>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
             Welcome, <strong>{user.name || user.email}</strong> — Role: <strong>{user.role}</strong>
           </p>

@@ -93,6 +93,20 @@ export async function POST(req: Request) {
             createdById: user.userId,
           },
         });
+
+        // Trigger low stock notification for Admins
+        if (newStock <= Number(product.reorderLevel)) {
+          const admins = await prisma.user.findMany({ where: { role: 'ADMIN' } });
+          for (const admin of admins) {
+            await prisma.notification.create({
+              data: {
+                userId: admin.id,
+                title: 'Low Stock Alert',
+                message: `Product "${product.name}" stock (${Math.max(0, newStock).toFixed(2)} ${product.baseUnit}) has fallen below reorder level (${product.reorderLevel} ${product.baseUnit}).`,
+              },
+            });
+          }
+        }
       }
     }
 
@@ -103,6 +117,15 @@ export async function POST(req: Request) {
         entity: 'Order',
         entityId: order.id,
         newData: JSON.stringify({ quotationId, totalAmount: Number(quotation.total) }),
+      },
+    });
+
+    // Notify the user who placed the order
+    await prisma.notification.create({
+      data: {
+        userId: user.userId,
+        title: 'Order Placed',
+        message: `Order #${order.id.slice(-8)} has been placed successfully from Quotation #${quotation.id.slice(-8)}.`,
       },
     });
 

@@ -50,6 +50,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       },
     });
 
+    // Notify the user who placed the order
+    await prisma.notification.create({
+      data: {
+        userId: existing.userId,
+        title: `Order Status: ${data.status}`,
+        message: `Your order #${order.id.slice(-8)} has been updated to ${data.status.toLowerCase()}.`,
+      },
+    });
+
     return NextResponse.json(order);
   } catch (error) {
     console.error('Order update error:', error);

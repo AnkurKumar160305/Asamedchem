@@ -48,6 +48,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       },
     });
 
+    // Notify the user who created the quotation
+    await prisma.notification.create({
+      data: {
+        userId: existing.userId,
+        title: `Quotation ${data.status}`,
+        message: `Your quotation for "${existing.customerName}" has been ${data.status.toLowerCase()} by the administrator.`,
+      },
+    });
+
     return NextResponse.json(quotation);
   } catch (error) {
     console.error('Quotation update error:', error);

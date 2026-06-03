@@ -27,27 +27,73 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const { id } = await params;
     const data = await req.json();
+
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    const previousStock = Number(existing.stockQuantity);
+    const newStock = Number(data.stockQuantity ?? existing.stockQuantity);
+
     const product = await prisma.product.update({
       where: { id },
       data: {
-        name: data.name,
-        category: data.category,
-        baseUnit: data.baseUnit,
-        stockQuantity: data.stockQuantity,
-        unitPrice: data.unitPrice,
+        name: data.name ?? existing.name,
+        category: data.category ?? existing.category,
+        description: data.description ?? existing.description,
+        baseUnit: data.baseUnit ?? existing.baseUnit,
+        stockQuantity: newStock,
+        pricePerBaseUnit: data.pricePerBaseUnit !== undefined ? Number(data.pricePerBaseUnit) : existing.pricePerBaseUnit,
+        reorderLevel: data.reorderLevel !== undefined ? Number(data.reorderLevel) : existing.reorderLevel,
+        status: data.status ?? existing.status,
       }
     });
 
+    // Log stock adjustment transaction if stock changed
+    if (previousStock !== newStock) {
+      const diff = newStock - previousStock;
+      const type = diff > 0 ? 'STOCK_IN' : 'STOCK_OUT';
+      
+      await prisma.inventoryTransaction.create({
+        data: {
+          productId: product.id,
+          type,
+          quantity: Math.abs(diff),
+          previousStock,
+          newStock,
+          notes: data.notes || 'Manual stock adjustment',
+          createdById: user.userId,
+        }
+      });
+
+      // Low stock notifications
+      if (newStock <= Number(product.reorderLevel)) {
+        const admins = await prisma.user.findMany({ where: { role: 'ADMIN' } });
+        for (const admin of admins) {
+          await prisma.notification.create({
+            data: {
+              userId: admin.id,
+              title: 'Low Stock Alert',
+              message: `Product "${product.name}" stock (${newStock} ${product.baseUnit}) has fallen below reorder level (${product.reorderLevel} ${product.baseUnit}).`,
+            }
+          });
+        }
+      }
+    }
+
     await prisma.auditLog.create({
       data: {
-        action: 'UPDATE_PRODUCT',
+        action: 'PRODUCT_UPDATED',
         userId: user.userId,
-        details: `Updated product ${product.name} (ID: ${product.id})`
+        entity: 'Product',
+        entityId: product.id,
+        oldData: JSON.stringify({ stockQuantity: previousStock, name: existing.name }),
+        newData: JSON.stringify({ stockQuantity: newStock, name: product.name }),
       }
     });
 
     return NextResponse.json(product);
   } catch (error) {
+    console.error('Product update error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

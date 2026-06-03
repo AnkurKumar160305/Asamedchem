@@ -59,7 +59,7 @@ export default function AuthPage() {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "2rem" }}>
       <div className="glass-card" style={{ maxWidth: "420px", width: "100%", textAlign: "center" }}>
-        <h1 className="heading-primary" style={{ fontSize: "2rem", marginBottom: "0.25rem" }}>AasaMedChem</h1>
+        <h1 className="heading-primary" style={{ fontSize: "2rem", marginBottom: "0.25rem" }}>AlcheFlow Nexus</h1>
         <p style={{ color: "var(--text-secondary)", marginBottom: "1.5rem", fontSize: "0.875rem" }}>
           Smart Inventory & Quotation Management
         </p>

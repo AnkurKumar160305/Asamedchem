@@ -65,7 +65,7 @@ export default function InventoryPage() {
     await fetch(`/api/products/${stockProduct.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ ...stockProduct, stockQuantity: newStock }),
+      body: JSON.stringify({ ...stockProduct, stockQuantity: newStock, notes: stockNotes }),
     });
     setShowStockModal(false);
     setStockQty("");

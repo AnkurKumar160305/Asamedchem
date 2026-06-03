@@ -9,7 +9,7 @@ export async function generateQuotationPDF(quotation: any) {
   // Header
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.text("AasaMedChem", 14, 20);
+  doc.text("AlcheFlow Nexus", 14, 20);
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.text("Smart Inventory & Quotation Management Platform", 14, 27);

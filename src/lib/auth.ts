@@ -5,7 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey_replace_in_produ
 export interface TokenPayload {
   userId: string;
   email: string;
-  role: 'ADMIN' | 'SELLER';
+  role: 'ADMIN' | 'SELLER' | 'BUYER';
 }
 
 export function signToken(payload: TokenPayload): string {

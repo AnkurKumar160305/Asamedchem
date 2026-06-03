@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AasaMedChem Management Platform",
+  title: "AlcheFlow Nexus Platform",
   description: "Enterprise Inventory and Quotation Management",
 };
 
